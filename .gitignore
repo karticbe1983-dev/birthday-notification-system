@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables (contains sensitive data)
+.env
+
+# Logs
+logs/
+*.log
+
+# Test data
+test-data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Excel files with real data (keep example only)
+birthdays.xlsx
+
+# Temporary files
+*.tmp
+*.temp

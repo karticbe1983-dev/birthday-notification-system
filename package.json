@@ -1,0 +1,39 @@
+{
+  "name": "birthday-notification-system",
+  "version": "1.0.0",
+  "description": "Automated birthday notification system that sends emails via Gmail",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "dev:watch": "nodemon --exec ts-node src/index.ts",
+    "test": "vitest --run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "birthday",
+    "notification",
+    "email",
+    "automation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
+    "winston": "^3.18.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^7.0.3",
+    "@vitest/ui": "^4.0.3",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.3"
+  }
+}

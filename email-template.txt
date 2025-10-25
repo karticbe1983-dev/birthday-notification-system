@@ -1,0 +1,10 @@
+Subject: Happy Birthday {{name}}! 🎉
+
+Dear {{name}},
+
+Wishing you a very Happy Birthday! 🎂
+
+May your day be filled with joy, laughter, and wonderful memories.
+
+Best wishes,
+Birthday Notification System
