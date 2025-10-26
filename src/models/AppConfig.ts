@@ -1,3 +1,5 @@
+import { WhatsAppConfig } from './WhatsAppConfig';
+
 /**
  * Application configuration
  */
@@ -20,6 +22,9 @@ export interface AppConfig {
     from: string;
   };
   
+  /** WhatsApp service configuration */
+  whatsapp: WhatsAppConfig;
+  
   /** Scheduler configuration */
   scheduler: {
     /** Cron expression for scheduling birthday checks */
@@ -30,6 +35,9 @@ export interface AppConfig {
   template: {
     /** Optional path to custom email template file */
     filePath?: string;
+    
+    /** Optional path to custom WhatsApp template file */
+    whatsappFilePath?: string;
   };
   
   /** Logging configuration */

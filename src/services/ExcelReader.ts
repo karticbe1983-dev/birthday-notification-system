@@ -1,7 +1,8 @@
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
+import { parsePhoneNumberWithError, isValidPhoneNumber } from 'libphonenumber-js';
 import { IExcelReader } from '../models/interfaces/IExcelReader';
-import { BirthdayRecord } from '../models/BirthdayRecord';
+import { BirthdayRecord, NotificationChannel } from '../models/BirthdayRecord';
 import { ILogger } from '../models/interfaces/ILogger';
 
 /**
@@ -93,6 +94,10 @@ export class ExcelReader implements IExcelReader {
     const name = record.Name || record.name;
     const email = record.Email || record.email;
     const birthdayRaw = record.Birthday || record.birthday;
+    
+    // Parse new optional fields
+    const phoneRaw = record.Phone || record.phone;
+    const channelRaw = record.NotificationChannel || record.notificationChannel;
 
     if (!name || typeof name !== 'string' || name.trim() === '') {
       errors.push('missing or invalid name');
@@ -130,10 +135,32 @@ export class ExcelReader implements IExcelReader {
       return null;
     }
 
+    // Parse and trim phone number
+    const phone = phoneRaw && typeof phoneRaw === 'string' ? phoneRaw.trim() : undefined;
+    
+    // Normalize channel value to lowercase
+    let channel = this.normalizeChannel(channelRaw);
+
+    // Implement channel fallback logic
+    if (channel === 'whatsapp' || channel === 'both') {
+      // Check if phone is missing or invalid
+      if (!phone || !this.isValidPhoneNumber(phone)) {
+        this.logger.warn('Invalid or missing phone for WhatsApp channel, falling back to email', {
+          name: name.trim(),
+          rowNumber,
+          phone: phone || 'missing',
+          requestedChannel: channel,
+        });
+        channel = 'email';
+      }
+    }
+
     return {
       name: name.trim(),
       email: email.trim(),
+      phone: phone || undefined,
       birthday,
+      notificationChannel: channel,
       rowNumber,
     };
   }
@@ -223,5 +250,51 @@ export class ExcelReader implements IExcelReader {
       date.getMonth() === month - 1 &&
       date.getDate() === day
     );
+  }
+
+  /**
+   * Validates phone number in E.164 format
+   * @param phone - Phone number string to validate
+   * @returns True if phone number is valid E.164 format
+   */
+  private isValidPhoneNumber(phone: string | undefined): boolean {
+    if (!phone || phone.trim() === '') {
+      return false;
+    }
+
+    try {
+      // Check if it's a valid phone number
+      if (!isValidPhoneNumber(phone)) {
+        return false;
+      }
+
+      // Parse and verify it's in E.164 format (starts with +)
+      const phoneNumber = parsePhoneNumberWithError(phone);
+      
+      // Ensure it's in E.164 format
+      const e164 = phoneNumber.format('E.164');
+      return e164 === phone;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Normalizes notification channel value to lowercase
+   * @param channelRaw - Raw channel value from Excel
+   * @returns Normalized NotificationChannel value, defaults to 'email'
+   */
+  private normalizeChannel(channelRaw: any): NotificationChannel {
+    if (!channelRaw || typeof channelRaw !== 'string') {
+      return 'email';
+    }
+
+    const normalized = channelRaw.trim().toLowerCase();
+    
+    if (normalized === 'email' || normalized === 'whatsapp' || normalized === 'both') {
+      return normalized as NotificationChannel;
+    }
+
+    return 'email';
   }
 }

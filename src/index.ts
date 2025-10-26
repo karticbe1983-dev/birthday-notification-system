@@ -3,6 +3,7 @@ import { Logger } from './utils/Logger';
 import { ExcelReader } from './services/ExcelReader';
 import { BirthdayChecker } from './services/BirthdayChecker';
 import { EmailService } from './services/EmailService';
+import { WhatsAppService } from './services/WhatsAppService';
 import { TemplateEngine } from './services/TemplateEngine';
 import { NotificationManager } from './services/NotificationManager';
 import { Scheduler } from './services/Scheduler';
@@ -36,15 +37,18 @@ async function main(): Promise<void> {
     const excelReader = new ExcelReader(logger);
     const birthdayChecker = new BirthdayChecker();
     const emailService = new EmailService(logger);
+    const whatsappService = new WhatsAppService(logger);
     const templateEngine = new TemplateEngine(logger);
     
     const notificationManager = new NotificationManager(
       excelReader,
       birthdayChecker,
       emailService,
+      whatsappService,
       templateEngine,
       logger,
       config.excel.filePath,
+      config.whatsapp.enabled,
       config.template.filePath
     );
     
@@ -68,6 +72,36 @@ async function main(): Promise<void> {
     }
     
     logger.info('Email service connection test passed');
+
+    // Step 4b: Initialize and test WhatsApp service if enabled
+    if (config.whatsapp.enabled) {
+      logger.info('WhatsApp service is enabled', {
+        accountSid: config.whatsapp.accountSid.substring(0, 8) + '***',
+        fromNumber: config.whatsapp.fromNumber,
+      });
+
+      logger.info('Initializing WhatsApp service...');
+      await whatsappService.initialize({
+        accountSid: config.whatsapp.accountSid,
+        authToken: config.whatsapp.authToken,
+        fromNumber: config.whatsapp.fromNumber,
+        enabled: config.whatsapp.enabled,
+      });
+
+      logger.info('Testing WhatsApp service connection...');
+      const whatsappConnectionSuccess = await whatsappService.testConnection();
+      
+      if (!whatsappConnectionSuccess) {
+        logger.warn('WhatsApp service connection test failed. WhatsApp notifications will be disabled.');
+        config.whatsapp.enabled = false;
+      } else {
+        logger.info('WhatsApp service connection test passed', {
+          fromNumber: config.whatsapp.fromNumber,
+        });
+      }
+    } else {
+      logger.info('WhatsApp service is disabled (missing Twilio credentials)');
+    }
 
     // Step 5: Run immediate birthday check on startup
     logger.info('Running immediate birthday check on startup...');

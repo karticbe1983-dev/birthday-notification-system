@@ -17,6 +17,9 @@ export class ConfigService {
     // Validate required environment variables
     this.validateRequiredVariables();
 
+    // Build WhatsApp configuration with validation
+    const whatsappConfig = this.buildWhatsAppConfig();
+
     // Build configuration object with defaults
     this.config = {
       excel: {
@@ -27,11 +30,13 @@ export class ConfigService {
         password: this.getRequiredEnvVar('GMAIL_PASSWORD'),
         from: process.env.GMAIL_FROM || this.getRequiredEnvVar('GMAIL_USER'),
       },
+      whatsapp: whatsappConfig,
       scheduler: {
         cronExpression: process.env.CRON_SCHEDULE || '0 9 * * *',
       },
       template: {
         filePath: process.env.TEMPLATE_FILE_PATH,
+        whatsappFilePath: process.env.WHATSAPP_TEMPLATE_FILE_PATH,
       },
       logging: {
         level: process.env.LOG_LEVEL || 'info',
@@ -86,5 +91,46 @@ export class ConfigService {
       throw new Error(`Required environment variable ${name} is not set.`);
     }
     return value;
+  }
+
+  /**
+   * Build WhatsApp configuration with validation
+   * @returns WhatsAppConfig object with enabled flag
+   */
+  private buildWhatsAppConfig() {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+
+    // Check if all required Twilio credentials are present
+    const hasAllCredentials = accountSid && authToken && fromNumber;
+
+    if (!hasAllCredentials) {
+      const missingCredentials: string[] = [];
+      if (!accountSid) missingCredentials.push('TWILIO_ACCOUNT_SID');
+      if (!authToken) missingCredentials.push('TWILIO_AUTH_TOKEN');
+      if (!fromNumber) missingCredentials.push('TWILIO_WHATSAPP_NUMBER');
+
+      console.warn(
+        `WhatsApp notifications disabled: Missing required Twilio credentials (${missingCredentials.join(', ')}). ` +
+        'The system will continue with email-only notifications.'
+      );
+
+      return {
+        accountSid: '',
+        authToken: '',
+        fromNumber: '',
+        enabled: false,
+      };
+    }
+
+    console.log('WhatsApp notifications enabled with Twilio configuration');
+
+    return {
+      accountSid: accountSid!,
+      authToken: authToken!,
+      fromNumber: fromNumber!,
+      enabled: true,
+    };
   }
 }

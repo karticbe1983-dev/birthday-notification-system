@@ -6,19 +6,23 @@
 src/
 ├── models/              # TypeScript interfaces and data models
 │   ├── interfaces/      # Service interfaces (dependency injection)
+│   │   ├── IWhatsAppService.ts  # WhatsApp service interface
+│   │   └── ...          # Other interfaces
 │   ├── AppConfig.ts     # Application configuration model
-│   ├── BirthdayRecord.ts # Birthday data model
+│   ├── BirthdayRecord.ts # Birthday data model (with phone & channel)
 │   ├── EmailConfig.ts   # Email configuration model
 │   ├── EmailTemplate.ts # Email template model
+│   ├── WhatsAppConfig.ts # WhatsApp/Twilio configuration model
 │   └── index.ts         # Barrel export
 ├── services/            # Core business logic implementations
 │   ├── BirthdayChecker.ts      # Birthday matching logic
 │   ├── ConfigService.ts        # Environment config loader
 │   ├── EmailService.ts         # Gmail SMTP integration
-│   ├── ExcelReader.ts          # Excel file parsing
-│   ├── NotificationManager.ts  # Orchestrates birthday checks
+│   ├── WhatsAppService.ts      # Twilio WhatsApp integration
+│   ├── ExcelReader.ts          # Excel file parsing (with phone validation)
+│   ├── NotificationManager.ts  # Orchestrates multi-channel notifications
 │   ├── Scheduler.ts            # Cron job management
-│   ├── TemplateEngine.ts       # Email template processing
+│   ├── TemplateEngine.ts       # Email & WhatsApp template processing
 │   └── index.ts                # Barrel export
 ├── utils/               # Utility functions and helpers
 │   ├── Logger.ts        # Winston logging wrapper
@@ -40,6 +44,7 @@ src/
 - Business logic isolated in service classes
 - Each service has single responsibility
 - Services orchestrated in `NotificationManager`
+- Multi-channel support: EmailService and WhatsAppService work independently
 
 ### Barrel Exports
 - Each directory exports via `index.ts`

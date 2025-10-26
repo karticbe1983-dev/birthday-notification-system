@@ -11,6 +11,8 @@
 - **dotenv**: Environment variable management
 - **node-cron**: Cron-based scheduling
 - **nodemailer**: Gmail SMTP email sending
+- **twilio**: WhatsApp messaging via Twilio API
+- **libphonenumber-js**: Phone number validation and formatting
 - **winston**: Structured logging with rotation
 - **xlsx**: Excel file reading and parsing
 
@@ -54,3 +56,11 @@ npm run test:watch         # Run tests in watch mode
 - **Protocol**: SMTP via Gmail (smtp.gmail.com:587)
 - **Authentication**: Requires Gmail app password (not regular password)
 - **TLS**: Required for secure connection
+
+## WhatsApp Service
+
+- **Provider**: Twilio WhatsApp Business API
+- **Authentication**: Account SID and Auth Token
+- **Phone Format**: E.164 format (e.g., +14155552671)
+- **Retry Logic**: 3 attempts with exponential backoff
+- **Optional**: System works with email-only if not configured

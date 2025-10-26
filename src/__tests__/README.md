@@ -1,8 +1,11 @@
-# End-to-End Test Documentation
+# Test Documentation
 
 ## Overview
 
-The end-to-end test suite (`e2e.test.ts`) validates the complete Birthday Notification System workflow from Excel file reading to email sending and logging.
+The test suite validates the complete Birthday Notification System workflow including Excel file reading, email sending, WhatsApp messaging, and logging. The suite includes two main test files:
+
+- **e2e.test.ts**: Core end-to-end tests for email functionality
+- **whatsapp-integration.test.ts**: WhatsApp integration and multi-channel notification tests
 
 ## Test Coverage
 
@@ -16,22 +19,34 @@ The test suite covers the following requirements:
 
 ## Running the Tests
 
-### Run All E2E Tests
+### Run All Tests
 
 ```bash
-npm test -- src/__tests__/e2e.test.ts
+npm test
+```
+
+### Run E2E Tests Only
+
+```bash
+npm test src/__tests__/e2e.test.ts
+```
+
+### Run WhatsApp Integration Tests Only
+
+```bash
+npm test src/__tests__/whatsapp-integration.test.ts
 ```
 
 ### Run Specific Test
 
 ```bash
-npm test -- src/__tests__/e2e.test.ts -t "should create test Excel file"
+npm test src/__tests__/e2e.test.ts -t "should create test Excel file"
 ```
 
 ### Run Tests in Watch Mode
 
 ```bash
-npm run test:watch -- src/__tests__/e2e.test.ts
+npm run test:watch
 ```
 
 ## Test Scenarios
@@ -258,9 +273,51 @@ When updating the system:
 4. Keep test data minimal and focused
 5. Clean up test artifacts properly
 
+## WhatsApp Integration Tests
+
+The `whatsapp-integration.test.ts` file contains comprehensive tests for the WhatsApp notification feature:
+
+### Test Coverage
+
+- **Requirement 7.2**: WhatsApp-only notifications (no email sent)
+- **Requirement 7.3**: Multi-channel notifications (both email and WhatsApp)
+- **Requirement 7.4, 7.5**: Independent channel processing (one failure doesn't block the other)
+- **Requirement 2.3, 2.5**: Fallback scenarios (invalid phone, missing phone, invalid channel)
+- **Requirement 1.5, 6.5**: WhatsApp disabled mode (missing Twilio credentials)
+- **Requirement 4.1-4.5**: Error handling and retry logic
+- **Requirement 5.1-5.3**: WhatsApp template loading and rendering
+- **Requirement 2.4**: Phone number validation (E.164 format)
+
+### Test Scenarios
+
+1. **WhatsApp-only notifications**: Verifies that when channel is 'whatsapp', only WhatsApp is sent
+2. **Multi-channel notifications**: Verifies that when channel is 'both', both email and WhatsApp are sent
+3. **Invalid phone fallback**: Verifies fallback to email when phone number is invalid
+4. **Missing phone fallback**: Verifies fallback to email when phone number is missing
+5. **Invalid channel default**: Verifies default to email when NotificationChannel is invalid
+6. **Empty channel default**: Verifies default to email when NotificationChannel is empty
+7. **WhatsApp disabled mode**: Verifies system continues with email-only when Twilio credentials are missing
+8. **Service initialization**: Verifies WhatsApp service handles missing credentials gracefully
+9. **Template loading**: Verifies WhatsApp template loading and variable substitution
+10. **Template fallback**: Verifies fallback to email template when WhatsApp template not found
+11. **Phone validation**: Verifies E.164 phone number format validation (US, India, UK)
+12. **Independent processing**: Verifies channels process independently (failure in one doesn't block the other)
+
+### Test Data Structure
+
+WhatsApp tests use Excel files with the following structure:
+
+```
+| Name          | Email              | Phone          | Birthday   | NotificationChannel |
+|---------------|--------------------|----------------|------------|---------------------|
+| Test User     | test@gmail.com     | +14155552671   | [TODAY]    | whatsapp            |
+| Multi User    | multi@gmail.com    | +14155552672   | [TODAY]    | both                |
+| Email User    | email@gmail.com    |                | [TODAY]    | email               |
+```
+
 ## Related Documentation
 
 - [Main README](../../README.md) - System setup and usage
-- [Requirements](../../.kiro/specs/birthday-notification-system/requirements.md) - System requirements
-- [Design](../../.kiro/specs/birthday-notification-system/design.md) - System design
-- [Tasks](../../.kiro/specs/birthday-notification-system/tasks.md) - Implementation tasks
+- [WhatsApp Requirements](../../.kiro/specs/whatsapp-notifications/requirements.md) - WhatsApp feature requirements
+- [WhatsApp Design](../../.kiro/specs/whatsapp-notifications/design.md) - WhatsApp feature design
+- [WhatsApp Tasks](../../.kiro/specs/whatsapp-notifications/tasks.md) - WhatsApp implementation tasks

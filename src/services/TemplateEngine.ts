@@ -20,6 +20,13 @@ Best wishes,
 Birthday Notification System`
   };
 
+  private defaultWhatsAppTemplate: string = `Happy Birthday {{name}}! 🎉🎂
+
+Wishing you a wonderful day filled with joy and happiness!
+
+Best wishes,
+Birthday Notification System`;
+
   constructor(logger: ILogger) {
     this.logger = logger;
   }
@@ -179,6 +186,72 @@ Birthday Notification System`
 
     validateText(template.subject, 'subject');
     validateText(template.body, 'body');
+  }
+
+  /**
+   * Loads WhatsApp template from file or returns default template
+   * Falls back to email template body if WhatsApp template not found
+   * @param filePath - Optional path to custom WhatsApp template file
+   * @returns WhatsApp template as plain text string
+   */
+  public loadWhatsAppTemplate(filePath?: string): string {
+    // If no file path provided, return default WhatsApp template
+    if (!filePath) {
+      this.logger.info('Using default WhatsApp template');
+      return this.defaultWhatsAppTemplate;
+    }
+
+    try {
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        this.logger.warn(`WhatsApp template file not found: ${filePath}, falling back to email template body`, { filePath });
+        // Fall back to email template body
+        return this.defaultTemplate.body;
+      }
+
+      // Read template file
+      const content = fs.readFileSync(filePath, 'utf-8').trim();
+      
+      // Validate template has content
+      if (!content) {
+        this.logger.warn(`WhatsApp template file is empty: ${filePath}, using default template`, { filePath });
+        return this.defaultWhatsAppTemplate;
+      }
+      
+      this.logger.info('Successfully loaded custom WhatsApp template', { filePath });
+      return content;
+    } catch (error) {
+      this.logger.error(
+        `Failed to load WhatsApp template from ${filePath}, using default template`,
+        error instanceof Error ? error : new Error(String(error)),
+        { filePath }
+      );
+      return this.defaultWhatsAppTemplate;
+    }
+  }
+
+  /**
+   * Renders WhatsApp template by replacing variables with actual values
+   * @param template - WhatsApp template string with placeholders
+   * @param data - Data object containing values for placeholders
+   * @returns Rendered WhatsApp message as plain text (truncated to 1600 chars if needed)
+   */
+  public renderWhatsApp(template: string, data: { name: string }): string {
+    // Replace {{name}} placeholder with recipient name
+    let rendered = this.replaceVariables(template, data);
+    
+    // Truncate to 1600 characters if needed (Twilio limit)
+    const maxLength = 1600;
+    if (rendered.length > maxLength) {
+      this.logger.warn('WhatsApp message exceeds 1600 character limit, truncating', {
+        originalLength: rendered.length,
+        truncatedLength: maxLength,
+        recipient: data.name
+      });
+      rendered = rendered.substring(0, maxLength);
+    }
+    
+    return rendered;
   }
 
   /**

@@ -2,6 +2,7 @@ import { INotificationManager } from '../models/interfaces/INotificationManager'
 import { IExcelReader } from '../models/interfaces/IExcelReader';
 import { IBirthdayChecker } from '../models/interfaces/IBirthdayChecker';
 import { IEmailService } from '../models/interfaces/IEmailService';
+import { IWhatsAppService } from '../models/interfaces/IWhatsAppService';
 import { ITemplateEngine } from '../models/interfaces/ITemplateEngine';
 import { ILogger } from '../models/interfaces/ILogger';
 import { BirthdayRecord } from '../models/BirthdayRecord';
@@ -14,26 +15,32 @@ export class NotificationManager implements INotificationManager {
   private excelReader: IExcelReader;
   private birthdayChecker: IBirthdayChecker;
   private emailService: IEmailService;
+  private whatsappService: IWhatsAppService;
   private templateEngine: ITemplateEngine;
   private logger: ILogger;
   private excelFilePath: string;
   private templateFilePath?: string;
+  private whatsappEnabled: boolean;
 
   constructor(
     excelReader: IExcelReader,
     birthdayChecker: IBirthdayChecker,
     emailService: IEmailService,
+    whatsappService: IWhatsAppService,
     templateEngine: ITemplateEngine,
     logger: ILogger,
     excelFilePath: string,
+    whatsappEnabled: boolean,
     templateFilePath?: string
   ) {
     this.excelReader = excelReader;
     this.birthdayChecker = birthdayChecker;
     this.emailService = emailService;
+    this.whatsappService = whatsappService;
     this.templateEngine = templateEngine;
     this.logger = logger;
     this.excelFilePath = excelFilePath;
+    this.whatsappEnabled = whatsappEnabled;
     this.templateFilePath = templateFilePath;
   }
 
@@ -65,17 +72,36 @@ export class NotificationManager implements INotificationManager {
 
       this.logger.info(`Found ${todaysBirthdays.length} birthday(s) for today`);
 
-      // Step 3: Load email template
-      const template = this.templateEngine.loadTemplate(this.templateFilePath);
+      // Step 3: Load templates
+      const emailTemplate = this.templateEngine.loadTemplate(this.templateFilePath);
+      const whatsappTemplate = this.templateEngine.loadWhatsAppTemplate(this.templateFilePath);
 
-      // Step 4: Send emails to each birthday person
+      // Step 4: Send notifications to each birthday person
+      const statistics = {
+        totalProcessed: 0,
+        emailSent: 0,
+        whatsappSent: 0,
+        emailFailed: 0,
+        whatsappFailed: 0,
+      };
+
       for (const record of todaysBirthdays) {
-        await this.processRecord(record, template);
+        const result = await this.processRecord(record, emailTemplate, whatsappTemplate);
+        statistics.totalProcessed++;
+        if (result.email) statistics.emailSent++;
+        if (result.whatsapp) statistics.whatsappSent++;
+        if (result.emailAttempted && !result.email) statistics.emailFailed++;
+        if (result.whatsappAttempted && !result.whatsapp) statistics.whatsappFailed++;
       }
 
       this.logger.info('Birthday check and notification process completed', {
         totalRecords: allRecords.length,
         birthdaysToday: todaysBirthdays.length,
+        emailsSent: statistics.emailSent,
+        emailsFailed: statistics.emailFailed,
+        whatsappSent: statistics.whatsappSent,
+        whatsappFailed: statistics.whatsappFailed,
+        whatsappEnabled: this.whatsappEnabled,
       });
     } catch (error) {
       this.logger.error(
@@ -87,40 +113,113 @@ export class NotificationManager implements INotificationManager {
   }
 
   /**
-   * Processes a single birthday record by sending an email
-   * Handles errors gracefully to allow other emails to be sent
+   * Processes a single birthday record by sending notifications through appropriate channels
+   * Handles errors gracefully to allow other notifications to be sent
    * @param record - Birthday record to process
-   * @param template - Email template to use
+   * @param emailTemplate - Email template to use
+   * @param whatsappTemplate - WhatsApp template to use
+   * @returns Object indicating success/failure for each channel
    */
-  private async processRecord(record: BirthdayRecord, template: any): Promise<void> {
-    try {
-      this.logger.info('Processing birthday notification', {
-        name: record.name,
-        email: record.email,
-      });
+  private async processRecord(
+    record: BirthdayRecord,
+    emailTemplate: any,
+    whatsappTemplate: string
+  ): Promise<{
+    email: boolean;
+    whatsapp: boolean;
+    emailAttempted: boolean;
+    whatsappAttempted: boolean;
+  }> {
+    const results = {
+      email: false,
+      whatsapp: false,
+      emailAttempted: false,
+      whatsappAttempted: false,
+    };
 
-      // Render the email with the person's name
-      const renderedEmail = this.templateEngine.renderEmail(template, { name: record.name });
+    this.logger.info('Processing birthday notification', {
+      name: record.name,
+      email: record.email,
+      phone: record.phone,
+      channel: record.notificationChannel,
+    });
 
-      // Send the birthday email
-      await this.emailService.sendBirthdayEmail(record, renderedEmail);
-
-      this.logger.info('Successfully sent birthday email', {
-        recipient: record.name,
-        email: record.email,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      // Log error but don't throw - continue processing other records
-      this.logger.error(
-        'Failed to send birthday email',
-        error instanceof Error ? error : new Error(String(error)),
-        {
+    // Send email if channel is 'email' or 'both'
+    if (record.notificationChannel === 'email' || record.notificationChannel === 'both') {
+      results.emailAttempted = true;
+      try {
+        this.logger.info('Sending email notification', {
           recipient: record.name,
           email: record.email,
-          rowNumber: record.rowNumber,
-        }
-      );
+        });
+
+        const renderedEmail = this.templateEngine.renderEmail(emailTemplate, { name: record.name });
+        await this.emailService.sendBirthdayEmail(record, renderedEmail);
+        results.email = true;
+
+        this.logger.info('Successfully sent birthday email', {
+          recipient: record.name,
+          email: record.email,
+        });
+      } catch (error) {
+        this.logger.error(
+          'Failed to send birthday email',
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            recipient: record.name,
+            email: record.email,
+            rowNumber: record.rowNumber,
+          }
+        );
+      }
     }
+
+    // Send WhatsApp if channel is 'whatsapp' or 'both' and WhatsApp is enabled
+    if (
+      (record.notificationChannel === 'whatsapp' || record.notificationChannel === 'both') &&
+      this.whatsappEnabled
+    ) {
+      results.whatsappAttempted = true;
+      try {
+        this.logger.info('Sending WhatsApp notification', {
+          recipient: record.name,
+          phone: record.phone,
+        });
+
+        const renderedWhatsApp = this.templateEngine.renderWhatsApp(whatsappTemplate, {
+          name: record.name,
+        });
+        await this.whatsappService.sendBirthdayMessage(record, renderedWhatsApp);
+        results.whatsapp = true;
+
+        this.logger.info('Successfully sent birthday WhatsApp message', {
+          recipient: record.name,
+          phone: record.phone,
+        });
+      } catch (error) {
+        this.logger.error(
+          'Failed to send birthday WhatsApp message',
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            recipient: record.name,
+            phone: record.phone,
+            rowNumber: record.rowNumber,
+          }
+        );
+      }
+    }
+
+    // Log summary for this record
+    this.logger.info('Notification processing complete for record', {
+      recipient: record.name,
+      channel: record.notificationChannel,
+      emailSent: results.email,
+      whatsappSent: results.whatsapp,
+      emailAttempted: results.emailAttempted,
+      whatsappAttempted: results.whatsappAttempted,
+      timestamp: new Date().toISOString(),
+    });
+
+    return results;
   }
 }
